@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+cp "$HOME/.claude/settings.glm.json" "$HOME/.claude/settings.json"
+chmod 600 "$HOME/.claude/settings.json" || true
+echo "Switched to GLM (Z.ai). Перезапусти TRAE или Developer: Reload Window."

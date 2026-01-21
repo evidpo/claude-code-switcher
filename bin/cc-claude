@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+cp "$HOME/.claude/settings.claude.json" "$HOME/.claude/settings.json"
+chmod 600 "$HOME/.claude/settings.json" || true
+echo "Switched to Claude (Anthropic). Перезапусти TRAE или Developer: Reload Window."
