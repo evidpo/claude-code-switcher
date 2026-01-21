@@ -1,5 +1,38 @@
 #!/bin/bash
 set -euo pipefail
-cp "$HOME/.claude/settings.glm.json" "$HOME/.claude/settings.json"
-chmod 600 "$HOME/.claude/settings.json" || true
-echo "Switched to GLM (Z.ai). Перезапусти TRAE или Developer: Reload Window."
+
+mkdir -p "$HOME/.claude"
+
+python3 - <<'PY'
+import json, os, sys
+
+base_path = os.path.expanduser("~/.claude/settings.json")
+tpl_path  = os.path.expanduser("~/.claude/settings.glm.json")
+
+# base может отсутствовать
+try:
+    with open(base_path, "r", encoding="utf-8") as f:
+        base = json.load(f)
+except FileNotFoundError:
+    base = {}
+except json.JSONDecodeError:
+    print("ERROR: ~/.claude/settings.json is not valid JSON", file=sys.stderr)
+    raise
+
+# template обязателен
+with open(tpl_path, "r", encoding="utf-8") as f:
+    tpl = json.load(f)
+
+if "env" not in tpl or not isinstance(tpl["env"], dict):
+    raise SystemExit("Template ~/.claude/settings.glm.json must contain object field: env")
+
+env = dict(tpl["env"])
+env["ENABLE_TOOL_SEARCH"] = "1"  # всегда включено
+base["env"] = env
+
+with open(base_path, "w", encoding="utf-8") as f:
+    json.dump(base, f, ensure_ascii=False, indent=2)
+PY
+
+chmod 600 "$HOME/.claude/settings.json" 2>/dev/null || true
+echo "OK: включён GLM (Z.ai). ENABLE_TOOL_SEARCH=1. Перезапусти TRAE или Developer: Reload Window."
