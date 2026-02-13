@@ -27,6 +27,14 @@ if "env" not in tpl or not isinstance(tpl["env"], dict):
     raise SystemExit("Template ~/.claude/settings.glm.json must contain object field: env")
 
 env = dict(tpl["env"])
+latest_model = env.pop("GLM_LATEST_MODEL", "glm-5")
+fallback_model = env.pop("GLM_FALLBACK_MODEL", "glm-4.7")
+plan = str(env.pop("GLM_PLAN", "")).lower()
+force_fallback = str(env.pop("GLM_FORCE_FALLBACK", "")).lower() in ("1", "true", "yes", "on")
+use_model = fallback_model if (force_fallback or plan in ("lite", "basic")) else latest_model
+env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = use_model
+env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = use_model
+env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = use_model
 env["ENABLE_TOOL_SEARCH"] = "1"  # всегда включено
 base["env"] = env
 
