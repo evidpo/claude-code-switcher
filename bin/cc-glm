@@ -9,7 +9,7 @@ import json, os, sys
 base_path = os.path.expanduser("~/.claude/settings.json")
 tpl_path  = os.path.expanduser("~/.claude/settings.glm.json")
 
-# base может отсутствовать
+# Load base (keep enabledPlugins etc.)
 try:
     with open(base_path, "r", encoding="utf-8") as f:
         base = json.load(f)
@@ -19,23 +19,24 @@ except json.JSONDecodeError:
     print("ERROR: ~/.claude/settings.json is not valid JSON", file=sys.stderr)
     raise
 
-# template обязателен
+# Load GLM template
 with open(tpl_path, "r", encoding="utf-8") as f:
     tpl = json.load(f)
 
-if "env" not in tpl or not isinstance(tpl["env"], dict):
-    raise SystemExit("Template ~/.claude/settings.glm.json must contain object field: env")
+env_tpl = tpl.get("env")
+if not isinstance(env_tpl, dict):
+    raise SystemExit('Template ~/.claude/settings.glm.json must contain {"env": {...}}')
 
-env = dict(tpl["env"])
-latest_model = env.pop("GLM_LATEST_MODEL", "glm-5")
-fallback_model = env.pop("GLM_FALLBACK_MODEL", "glm-4.7")
-plan = str(env.pop("GLM_PLAN", "")).lower()
-force_fallback = str(env.pop("GLM_FORCE_FALLBACK", "")).lower() in ("1", "true", "yes", "on")
-use_model = fallback_model if (force_fallback or plan in ("lite", "basic")) else latest_model
-env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = use_model
-env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = use_model
-env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = use_model
-env["ENABLE_TOOL_SEARCH"] = "1"  # всегда включено
+env = dict(env_tpl)
+
+# Always on
+env["ENABLE_TOOL_SEARCH"] = "1"
+
+# Pin models to 4.7
+env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = "glm-4.7-flash"
+env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = "glm-4.7"
+env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = "glm-4.7"
+
 base["env"] = env
 
 with open(base_path, "w", encoding="utf-8") as f:
@@ -43,4 +44,4 @@ with open(base_path, "w", encoding="utf-8") as f:
 PY
 
 chmod 600 "$HOME/.claude/settings.json" 2>/dev/null || true
-echo "OK: включён GLM (Z.ai). ENABLE_TOOL_SEARCH=1. Перезапусти TRAE или Developer: Reload Window."
+echo "OK: включён GLM (Z.ai) pinned glm-4.7. ENABLE_TOOL_SEARCH=1. Перезапусти TRAE или Developer: Reload Window."

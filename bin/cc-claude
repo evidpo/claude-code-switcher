@@ -21,11 +21,13 @@ except json.JSONDecodeError:
 with open(tpl_path, "r", encoding="utf-8") as f:
     tpl = json.load(f)
 
-if "env" not in tpl or not isinstance(tpl["env"], dict):
-    raise SystemExit("Template ~/.claude/settings.claude.json must contain object field: env")
+env_tpl = tpl.get("env")
+if not isinstance(env_tpl, dict):
+    raise SystemExit('Template ~/.claude/settings.claude.json must contain {"env": {...}}')
 
-env = dict(tpl["env"])  # обычно {}
-env["ENABLE_TOOL_SEARCH"] = "1"  # всегда включено
+env = dict(env_tpl)
+env["ENABLE_TOOL_SEARCH"] = "1"
+
 base["env"] = env
 
 with open(base_path, "w", encoding="utf-8") as f:
