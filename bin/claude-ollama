@@ -1,0 +1,27 @@
+#!/bin/bash
+# Запускает Claude Code в изолированном профиле ~/.claude-ollama/,
+# прокинутом в Ollama (локальный демон или :cloud-модели через ollama.com).
+#
+# Использование:
+#   claude-ollama                                  # интерактивный выбор модели
+#   claude-ollama --model minimax-m2.7:cloud       # сразу с моделью
+#   claude-ollama --model glm-5:cloud
+#
+# Профиль создаётся install.sh'ом, включает symlinks на правила / skills / MCP
+# из основного ~/.claude/, но имеет свой логин ollama.com и свою историю сессий.
+set -euo pipefail
+
+PROFILE_DIR="$HOME/.claude-ollama"
+
+if [ ! -d "$PROFILE_DIR" ]; then
+  echo "ERROR: профиль $PROFILE_DIR не инициализирован." >&2
+  echo "Запусти ./install.sh в корне claude-code-switcher." >&2
+  exit 1
+fi
+
+if ! command -v ollama >/dev/null 2>&1; then
+  echo "ERROR: ollama не установлена. https://ollama.com/download" >&2
+  exit 1
+fi
+
+exec env CLAUDE_CONFIG_DIR="$PROFILE_DIR" ollama launch claude "$@"

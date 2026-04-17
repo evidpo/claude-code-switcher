@@ -1,126 +1,216 @@
 # claude-code-switcher
 
-Переключатель окружения для **Claude Code** между:
+Два способа переключать модель/провайдера в **Claude Code**:
 
-- **GLM (Z.ai)** — через `https://api.z.ai/api/anthropic`, модели **жёстко pinned на `glm-4.7`**
-- **Claude (Anthropic)** — стандартный режим Claude Code
-
-Главная идея: скрипты **НЕ копируют целиком** `~/.claude/settings.*.json` в `~/.claude/settings.json`.  
-Они заменяют **только поле `env`** в `~/.claude/settings.json`, чтобы **не сносить остальные настройки** (например, `enabledPlugins`, MCP-конфиги и т.п.).
+1. **`env`-переключатели** (`cc-glm`, `cc-claude`) — меняют провайдера «на месте», в твоём основном `~/.claude/`. Один активный провайдер в момент времени.
+2. **Отдельная команда `claude-ollama`** — параллельный профиль `~/.claude-ollama/` с теми же правилами/skills/MCP (через symlinks), всегда подключённый к Ollama. Работает одновременно с обычным `claude`.
 
 ---
 
-## Быстрый старт
+## Установка
 
-### 1) Клонировать репозиторий
 ```bash
-git clone https://github.com/evidpo/claude-code-switcher.git
+git clone https://github.com/mihailovmike/claude-code-switcher.git
 cd claude-code-switcher
-```
-
-### 2) Установить команды
-```bash
 ./install.sh
 ```
 
-После установки будут доступны команды:
-- `cc-glm` — включить GLM (Z.ai) **pinned `glm-4.7`**
-- `cc-claude` — включить Claude (Anthropic)
+Что делает `install.sh`:
+
+- Ставит в `~/.local/bin/`: `cc-glm`, `cc-claude`, `claude-ollama` (и `cc-status`, если есть).
+- Копирует шаблоны в `~/.claude/settings.glm.json`, `~/.claude/settings.claude.json`.
+- Создаёт профиль `~/.claude-ollama/` и симлинкует в него правила, skills, agents, hooks, plugins, commands, settings, MCP-конфиг из основного `~/.claude/`.
+- Опционально — спрашивает GLM-токен (Enter — пропустить).
+
+Проверь, что `~/.local/bin` в `PATH`:
+
+```bash
+echo "$PATH" | tr ':' '\n' | grep -q "$HOME/.local/bin" && echo OK || echo "добавь в ~/.zshrc:  export PATH=\"\$HOME/.local/bin:\$PATH\""
+```
 
 ---
 
-## Где лежат файлы
+## Как это устроено
 
-Шаблоны:
-- `~/.claude/settings.glm.json`
-- `~/.claude/settings.claude.json`
+### `cc-glm` / `cc-claude` (env-swap)
 
-Активный файл, который читает Claude Code:
-- `~/.claude/settings.json`
+Скрипты **НЕ копируют целиком** `~/.claude/settings.*.json` в `~/.claude/settings.json`.
+Они заменяют **только поле `env`**, чтобы не сносить остальные настройки (`enabledPlugins`, `hooks`, `permissions`, и т.п.).
 
-> Важно: токен **не хранится в репозитории**. Он хранится локально у тебя в `~/.claude/settings.glm.json`.
+- **GLM (Z.ai)** — `https://api.z.ai/api/anthropic`, модели pinned на `glm-4.7`.
+- **Claude (Anthropic)** — стандартный режим.
+
+### `claude-ollama` (параллельный профиль)
+
+Бинарник-обёртка в `~/.local/bin/claude-ollama`:
+
+```bash
+exec env CLAUDE_CONFIG_DIR="$HOME/.claude-ollama" ollama launch claude "$@"
+```
+
+Переменная `CLAUDE_CONFIG_DIR` сообщает Claude Code, где хранить credentials, историю и плагины. Указываем `~/.claude-ollama/` → получаем изолированный профиль. Внутри него — symlinks на всё общее из `~/.claude/`:
+
+| Что общее (через symlinks) | Что своё в профиле |
+|-|-|
+| `CLAUDE.md`, `RTK.md`, `rules/` | Логин в ollama.com |
+| `skills/`, `commands/`, `agents/`, `plugins/` | История сессий (`projects/`, `sessions/`) |
+| `hooks/`, `settings.json`, `settings.local.json` | Кеши, telemetry, plans |
+| `.claude.json` → MCP-серверы | |
+
+Добавил skill/MCP/правило в `~/.claude/` → автоматически доступно в `claude-ollama` (symlinks).
 
 ---
 
 ## Использование
 
-### Включить GLM (Z.ai)
+### Обычный Claude Code
+
 ```bash
-cc-glm
+claude
 ```
 
-Что происходит:
-- берётся `env` из `~/.claude/settings.glm.json`
-- принудительно выставляются модели:
-  - `ANTHROPIC_DEFAULT_OPUS_MODEL=glm-4.7`
-  - `ANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7`
-  - `ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash`
-- принудительно включается:
-  - `ENABLE_TOOL_SEARCH=1`
-- в `~/.claude/settings.json` заменяется **только** поле `env` (прочие поля сохраняются)
+Твой привычный Claude Code, `~/.claude/`, основной аккаунт Anthropic.
 
-### Включить Claude (Anthropic)
+### Ollama (локально или :cloud)
+
 ```bash
-cc-claude
+claude-ollama                                  # ollama спросит модель интерактивно
+claude-ollama --model minimax-m2.7:cloud       # сразу с моделью
+claude-ollama --model glm-5:cloud
+claude-ollama --model qwen3-coder              # локальная модель
 ```
 
-Что происходит:
-- берётся `env` из `~/.claude/settings.claude.json`
-- принудительно включается:
-  - `ENABLE_TOOL_SEARCH=1`
-- в `~/.claude/settings.json` заменяется **только** поле `env` (прочие поля сохраняются)
+**Первый запуск** откроет браузер для логина на ollama.com. Дальше — просто работает. Можно открыть второй терминал и держать обычный `claude` параллельно — они не мешают друг другу.
+
+Список облачных моделей: <https://ollama.com/search?c=cloud>
+
+### GLM (Z.ai) / нативный Claude через env-swap
+
+```bash
+cc-glm       # включить GLM, pinned glm-4.7
+cc-claude    # вернуть нативный Claude
+```
+
+После переключения в TRAE/VS Code: **Cmd+Shift+P → Developer: Reload Window**.
 
 ---
 
-## Важно для TRAE / VS Code
+## Когда какой подход
 
-После переключения режима сделай:
-- **TRAE → Cmd+Shift+P → Developer: Reload Window**
-
-(или просто перезапусти окно), чтобы расширение перечитало настройки.
+| Сценарий | Команда |
+|-|-|
+| Хочу временно сменить модель на GLM | `cc-glm` |
+| Хочу попробовать Ollama один раз | `claude-ollama --model <...>` |
+| Держу Max-аккаунт и Ollama параллельно в разных вкладках | `claude` + `claude-ollama` |
+| Нужны разные истории сессий | профиль (т.е. `claude-ollama`) |
+| Основной `~/.claude/` ни в коем случае не трогать | профиль |
 
 ---
 
-## Почему `enabledPlugins` может быть пустым
+## Где лежат файлы
 
-Если раньше переключатель делал `cp settings.glm.json -> settings.json`, можно было потерять поле `enabledPlugins` (его просто перетирало).  
+```
+~/.local/bin/
+├── claude-ollama            # бинарник-обёртка
+├── cc-glm                   # env-swap на GLM
+└── cc-claude                # env-swap на нативный Claude
 
-Текущая версия переключателя:
-- **не удаляет** `enabledPlugins`
-- **не восстанавливает** его, если оно уже было удалено раньше
+~/.claude/                   # основной профиль Claude Code
+├── settings.json            # активный конфиг
+├── settings.glm.json        # шаблон env для GLM (с токеном)
+├── settings.claude.json     # шаблон env для нативного Claude
+├── rules/, skills/, ...     # общие правила и skills
 
-Если поле уже отсутствует, оно обычно появляется снова после действий в UI плагинов Claude Code.
+~/.claude-ollama/            # параллельный профиль (symlinks на ~/.claude/)
+├── CLAUDE.md  ->  ~/.claude/CLAUDE.md
+├── rules      ->  ~/.claude/rules
+├── skills     ->  ~/.claude/skills
+├── .claude.json ->  ~/.claude.json       # MCP-серверы
+├── sessions/, projects/     # СВОЯ история (не symlink)
+└── .credentials / keychain  # СВОЙ логин
+```
+
+> Токены не хранятся в репозитории — локально в `~/.claude/settings.glm.json`.
 
 ---
 
 ## Отладка
 
-### Проверить, что `settings.json` — валидный JSON
+**`settings.json` — валидный JSON:**
+
 ```bash
 python3 -m json.tool ~/.claude/settings.json >/dev/null && echo OK
 ```
 
-### Проверить, что GLM включён и модели pinned на 4.7
+**Текущий env-режим:**
+
 ```bash
 python3 - <<'PY'
 import json, os
-p=os.path.expanduser("~/.claude/settings.json")
-env=json.load(open(p,"r",encoding="utf-8")).get("env",{})
-print("BASE_URL:", env.get("ANTHROPIC_BASE_URL"))
-print("OPUS:", env.get("ANTHROPIC_DEFAULT_OPUS_MODEL"))
-print("SONNET:", env.get("ANTHROPIC_DEFAULT_SONNET_MODEL"))
-print("HAIKU:", env.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"))
-print("ENABLE_TOOL_SEARCH:", env.get("ENABLE_TOOL_SEARCH"))
+env = json.load(open(os.path.expanduser("~/.claude/settings.json"))).get("env", {})
+print("BASE_URL:", env.get("ANTHROPIC_BASE_URL", "(native Claude)"))
+print("OPUS:   ", env.get("ANTHROPIC_DEFAULT_OPUS_MODEL"))
+print("SONNET: ", env.get("ANTHROPIC_DEFAULT_SONNET_MODEL"))
+print("HAIKU:  ", env.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"))
+print("TOOL_SEARCH:", env.get("ENABLE_TOOL_SEARCH"))
 PY
 ```
+
+**Профиль Ollama — symlinks на месте:**
+
+```bash
+ls -la ~/.claude-ollama/
+```
+
+**Ollama-демон доступен:**
+
+```bash
+curl -s http://localhost:11434/api/tags | head -c 200
+```
+
+**Какой профиль активен в текущем терминале:**
+
+```bash
+echo "${CLAUDE_CONFIG_DIR:-(default ~/.claude)}"
+```
+
+---
+
+## Обновление профиля после изменений в `~/.claude/`
+
+Ничего делать не надо — всё через symlinks. Добавил новый skill, hook, MCP-сервер — он сразу в `claude-ollama`.
+
+Если что-то переехало/переименовалось и ссылки сломались:
+
+```bash
+cd claude-code-switcher && ./install.sh
+```
+
+(безопасно — скрипт идемпотентен, `ln -sfn` перезаписывает битые ссылки).
+
+---
+
+## Почему `enabledPlugins` может быть пустым
+
+Если раньше переключатель делал `cp settings.glm.json -> settings.json`, можно было потерять `enabledPlugins` — его перетирало.
+
+Текущая версия:
+
+- **не удаляет** `enabledPlugins`
+- **не восстанавливает** его, если оно уже было удалено раньше
+
+Если поле отсутствует — обычно появляется после действий в UI плагинов Claude Code.
 
 ---
 
 ## Uninstall
 
-Удаляет команды из `~/.local/bin`.  
-Локальные файлы `~/.claude/settings.*` не удаляет (там могут быть твои настройки и токен).
-
 ```bash
 ./uninstall.sh
+```
+
+Удаляет бинарники из `~/.local/bin`. Профиль `~/.claude-ollama/` и шаблоны `~/.claude/settings.*` **не трогает** (там твоя история и токены). Снести профиль целиком:
+
+```bash
+rm -rf ~/.claude-ollama
 ```
