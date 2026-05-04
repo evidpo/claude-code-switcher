@@ -1,0 +1,30 @@
+#!/bin/bash
+# Shortcut: Codex Desktop App с моделью Kimi K2.6 через Ollama Cloud.
+#
+# Под капотом: `ollama launch codex --model kimi-k2.6:cloud -- app <path>`.
+#   - запускает Codex.app с runtime-оверрайдом модели и провайдера на Ollama
+#   - твой ~/.codex/config.toml не меняется
+#
+# ВАЖНО (ограничение macOS): если Codex.app уже запущен — закрой его сначала
+# (Cmd+Q). macOS не передаёт флаги в уже запущенное приложение.
+#
+# Использование:
+#   codex-app-kimi               # открыть текущую директорию
+#   codex-app-kimi ~/coding/foo  # открыть конкретный workspace
+set -euo pipefail
+
+MODEL="kimi-k2.6:cloud"
+WORKSPACE="${1:-.}"
+
+if ! command -v ollama >/dev/null 2>&1; then
+  echo "ERROR: ollama не установлена. https://ollama.com/download" >&2
+  exit 1
+fi
+
+if pgrep -x "Codex" >/dev/null 2>&1; then
+  echo "WARNING: Codex.app уже запущен. macOS проигнорирует --model оверрайд." >&2
+  echo "Закрой текущий Codex (Cmd+Q) и запусти codex-app-kimi заново." >&2
+  exit 1
+fi
+
+exec ollama launch codex --model "$MODEL" -- app "$WORKSPACE"

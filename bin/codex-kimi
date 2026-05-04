@@ -1,0 +1,21 @@
+#!/bin/bash
+# Shortcut: Codex CLI с моделью Kimi K2.6 через Ollama Cloud.
+#
+# Под капотом: `ollama launch codex --model kimi-k2.6:cloud`.
+#   - использует существующий ~/.codex/config.toml (MCP-серверы, sandbox, и т.д.)
+#   - модель и провайдер переопределяются в-runtime, файл config.toml не меняется
+#   - аутентификация Ollama — из ~/.ollama/config.json
+#
+# Использование:
+#   codex-kimi
+#   codex-kimi --resume
+set -euo pipefail
+
+MODEL="kimi-k2.6:cloud"
+
+if ! command -v ollama >/dev/null 2>&1; then
+  echo "ERROR: ollama не установлена. https://ollama.com/download" >&2
+  exit 1
+fi
+
+exec ollama launch codex --model "$MODEL" "$@"

@@ -14,9 +14,14 @@ fi
 install -m 600 "$REPO_DIR/templates/settings.claude.json" "$HOME/.claude/settings.claude.json"
 install -m 600 "$REPO_DIR/templates/settings.glm.json"    "$HOME/.claude/settings.glm.json"
 
-# ─── параллельный профиль под Ollama ──────────────────────────────────────
+# ─── параллельный профиль под Ollama (Claude Code) ────────────────────────
 install -m 755 "$REPO_DIR/bin/claude-ollama" "$HOME/.local/bin/claude-ollama"
 install -m 755 "$REPO_DIR/bin/claude-kimi"   "$HOME/.local/bin/claude-kimi"
+
+# ─── Codex CLI / Desktop через Ollama Cloud ───────────────────────────────
+install -m 755 "$REPO_DIR/bin/codex-ollama"   "$HOME/.local/bin/codex-ollama"
+install -m 755 "$REPO_DIR/bin/codex-kimi"     "$HOME/.local/bin/codex-kimi"
+install -m 755 "$REPO_DIR/bin/codex-app-kimi" "$HOME/.local/bin/codex-app-kimi"
 
 PROFILE_DIR="$HOME/.claude-ollama"
 mkdir -p "$PROFILE_DIR"
@@ -68,10 +73,13 @@ cat <<'DONE'
 
 Готово. Команды:
 
-  cc-glm         → включить GLM (Z.ai), env-swap в ~/.claude/
-  cc-claude      → включить родной Claude (Anthropic), env-swap
-  claude-ollama  → отдельный профиль ~/.claude-ollama/, подключён к Ollama
-  claude-kimi    → то же, но сразу с моделью kimi-k2.6:cloud (Moonshot AI)
+  cc-glm          → включить GLM (Z.ai), env-swap в ~/.claude/
+  cc-claude       → включить родной Claude (Anthropic), env-swap
+  claude-ollama   → отдельный профиль ~/.claude-ollama/, подключён к Ollama
+  claude-kimi     → то же, но сразу с моделью kimi-k2.6:cloud (Moonshot AI)
+  codex-ollama    → Codex CLI через Ollama (интерактивный выбор модели)
+  codex-kimi      → Codex CLI с Kimi K2.6 cloud
+  codex-app-kimi  → Codex Desktop App с Kimi K2.6 cloud
 
 Проверь:
   ls -la ~/.claude-ollama/                 # должны быть symlinks на ~/.claude/

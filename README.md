@@ -17,7 +17,9 @@ cd claude-code-switcher
 
 Что делает `install.sh`:
 
-- Ставит в `~/.local/bin/`: `cc-glm`, `cc-claude`, `claude-ollama`, `claude-kimi` (и `cc-status`, если есть).
+- Ставит в `~/.local/bin/`:
+  - **Claude Code:** `cc-glm`, `cc-claude`, `claude-ollama`, `claude-kimi` (+ `cc-status`, если есть).
+  - **Codex:** `codex-ollama`, `codex-kimi`, `codex-app-kimi`.
 - Копирует шаблоны в `~/.claude/settings.glm.json`, `~/.claude/settings.claude.json`.
 - Создаёт профиль `~/.claude-ollama/` и симлинкует в него правила, skills, agents, hooks, plugins, commands, settings, MCP-конфиг из основного `~/.claude/`.
 - Опционально — спрашивает GLM-токен (Enter — пропустить).
@@ -106,14 +108,63 @@ cc-claude    # вернуть нативный Claude
 
 ---
 
+## Codex через Ollama Cloud
+
+Те же подписки Ollama Cloud, что используются `claude-ollama` / `claude-kimi`,
+работают и для **Codex** (CLI и Desktop App).
+
+Под капотом: `ollama launch codex --model <model>` — ставит runtime-оверрайды
+модели и провайдера, **не трогая твой `~/.codex/config.toml`** (MCP-серверы,
+sandbox и аутентификация ChatGPT остаются на месте).
+
+### Codex CLI
+
+```bash
+codex-kimi                                     # Codex CLI с Kimi K2.6 cloud
+codex-ollama                                   # Codex CLI, выбор модели интерактивно
+codex-ollama --model glm-5.1:cloud
+codex-ollama --model deepseek-v4-pro:cloud
+```
+
+### Codex Desktop App
+
+```bash
+codex-app-kimi               # Codex.app в текущем workspace, на Kimi K2.6
+codex-app-kimi ~/coding/foo  # Codex.app в указанном workspace
+```
+
+> ⚠️ macOS-ограничение: если `Codex.app` уже запущен — закрой (Cmd+Q),
+> иначе оверрайды не применятся. Скрипт сам это проверит и предупредит.
+
+### Параллельная работа
+
+Все команды — отдельные процессы:
+
+| Хочу | Запускаю |
+|-|-|
+| Обычный Codex с GPT-5.5 | `codex` |
+| Codex CLI с Kimi | `codex-kimi` |
+| Codex Desktop с Kimi | `codex-app-kimi` |
+| Обычный Claude с Anthropic | `claude` |
+| Claude Code с Kimi | `claude-kimi` |
+
+В разных терминалах/окнах могут крутиться одновременно. История сессий Codex
+лежит в общей `~/.codex/sessions/` (изоляции нет — Codex CLI не имеет
+аналога `CLAUDE_CONFIG_DIR`), но это не блокирует параллельную работу.
+
+---
+
 ## Когда какой подход
 
 | Сценарий | Команда |
 |-|-|
 | Хочу временно сменить модель на GLM | `cc-glm` |
 | Хочу попробовать Ollama один раз | `claude-ollama --model <...>` |
-| Хочу быстро запустить Kimi K2.6 | `claude-kimi` |
+| Хочу быстро запустить Kimi K2.6 в Claude Code | `claude-kimi` |
+| Хочу Kimi K2.6 в Codex CLI | `codex-kimi` |
+| Хочу Kimi K2.6 в Codex Desktop App | `codex-app-kimi` |
 | Держу Max-аккаунт и Ollama параллельно в разных вкладках | `claude` + `claude-ollama` |
+| Параллельно Codex GPT-5.5 и Codex Kimi | `codex` + `codex-kimi` |
 | Нужны разные истории сессий | профиль (т.е. `claude-ollama`) |
 | Основной `~/.claude/` ни в коем случае не трогать | профиль |
 
@@ -123,10 +174,13 @@ cc-claude    # вернуть нативный Claude
 
 ```
 ~/.local/bin/
-├── claude-ollama            # бинарник-обёртка
-├── claude-kimi              # claude-ollama с моделью kimi-k2.6:cloud
+├── claude-ollama            # Claude Code через Ollama (выбор модели)
+├── claude-kimi              # Claude Code с kimi-k2.6:cloud
 ├── cc-glm                   # env-swap на GLM
-└── cc-claude                # env-swap на нативный Claude
+├── cc-claude                # env-swap на нативный Claude
+├── codex-ollama             # Codex CLI через Ollama (выбор модели)
+├── codex-kimi               # Codex CLI с kimi-k2.6:cloud
+└── codex-app-kimi           # Codex Desktop App с kimi-k2.6:cloud
 
 ~/.claude/                   # основной профиль Claude Code
 ├── settings.json            # активный конфиг

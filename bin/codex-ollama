@@ -1,0 +1,18 @@
+#!/bin/bash
+# Запускает Codex CLI через Ollama (cloud-модели через ollama.com или локальные).
+#
+# Использование:
+#   codex-ollama                                  # интерактивный выбор модели
+#   codex-ollama --model glm-5.1:cloud
+#   codex-ollama --model deepseek-v4-pro:cloud
+#
+# Использует существующий ~/.codex/config.toml — не меняет его.
+# Аутентификация Ollama — из ~/.ollama/config.json.
+set -euo pipefail
+
+if ! command -v ollama >/dev/null 2>&1; then
+  echo "ERROR: ollama не установлена. https://ollama.com/download" >&2
+  exit 1
+fi
+
+exec ollama launch codex "$@"
